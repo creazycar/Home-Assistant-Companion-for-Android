@@ -358,10 +358,11 @@
             android:taskAffinity="io.homeassistant.companion.android.controls"
             android:enabled="false" />
 
-        <!-- CN adaptation (nesror): LocationSensorManager is a BroadcastReceiver itself
-             (no Google Play Services location stack), so it is registered directly. -->
+        <!-- Upstream architecture: thin LocationSensorReceiver is manifest-registered and
+             forwards broadcasts to LocationSensorManager (a DI singleton owning the
+             GMS-free CN location stack). -->
         <receiver
-            android:name=".sensors.LocationSensorManager"
+            android:name=".sensors.LocationSensorReceiver"
             android:enabled="true"
             android:exported="false" />
 

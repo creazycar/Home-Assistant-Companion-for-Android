@@ -72,7 +72,7 @@ class LocationSensorManager @Inject constructor(
          */
         fun createRequestAccurateLocationUpdateIntent(context: Context): Intent = Intent(
             context,
-            LocationSensorManager::class.java,
+            LocationSensorReceiver::class.java,
         ).apply {
             action = ACTION_REQUEST_ACCURATE_LOCATION_UPDATE
         }

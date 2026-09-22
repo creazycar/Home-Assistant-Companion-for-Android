@@ -86,6 +86,7 @@ import io.homeassistant.companion.android.database.settings.SettingsDao
 import io.homeassistant.companion.android.database.settings.WebsocketSetting
 import io.homeassistant.companion.android.frontend.navigation.FrontendTarget
 import io.homeassistant.companion.android.launch.intentLaunchWithNavigateTo
+import io.homeassistant.companion.android.sensors.LocationSensorReceiver
 import io.homeassistant.companion.android.sensors.LocationSensorManager
 import io.homeassistant.companion.android.sensors.LocationSensorManager.Companion.setHighAccuracyModeIntervalSetting
 import io.homeassistant.companion.android.sensors.LocationSensorManager.Companion.setHighAccuracyModeSetting
@@ -786,7 +787,7 @@ class MessagingManager @Inject constructor(
                         data[HIGH_ACCURACY_UPDATE_INTERVAL]!!.toInt(),
                     )
                 }
-                val intent = Intent(context, LocationSensorManager::class.java)
+                val intent = Intent(context, LocationSensorReceiver::class.java)
                 intent.action = LocationSensorManager.ACTION_FORCE_HIGH_ACCURACY
                 intent.putExtra("command", command)
                 context.sendBroadcast(intent)
