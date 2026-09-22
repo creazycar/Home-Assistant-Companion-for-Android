@@ -59,14 +59,27 @@ class AndroidApplicationConventionPlugin : Plugin<Project> {
 
                 val NESTOR_KEYSTORE_PASSWORD = System.getenv("NESTOR_KEYSTORE_PASSWORD")
                 val NESTOR_KEYSTORE_ALIAS = System.getenv("NESTOR_KEYSTORE_ALIAS")
-                // val PGY_API_KEY = System.getenv("PGY_API_KEY")
+                // CN fork signing: prefer env-provided keystore (CI secrets), fall back to the
+                // bundled cn-release.keystore so the project builds out of the box.
+                val cnKeyStorePath = System.getenv("KEYSTORE_PATH") ?: "../cn-release.keystore"
+                val cnKeyStorePassword = System.getenv("KEYSTORE_PASSWORD") ?: "hacn2026"
+                val cnKeyStoreAlias = System.getenv("KEYSTORE_ALIAS") ?: "hacn"
 
                 signingConfigs {
                     create("release") {
-                        storeFile = file("../nestor.keystore")
-                        storePassword = NESTOR_KEYSTORE_PASSWORD
-                        keyAlias = NESTOR_KEYSTORE_ALIAS
-                        keyPassword = NESTOR_KEYSTORE_PASSWORD
+                        if (!NESTOR_KEYSTORE_PASSWORD.isNullOrEmpty()) {
+                            // Legacy nesror keystore (only if credentials are provided)
+                            storeFile = file("../nestor.keystore")
+                            storePassword = NESTOR_KEYSTORE_PASSWORD
+                            keyAlias = NESTOR_KEYSTORE_ALIAS
+                            keyPassword = NESTOR_KEYSTORE_PASSWORD
+                        } else {
+                            storeFile = file(cnKeyStorePath)
+                            storeType = "PKCS12"
+                            storePassword = cnKeyStorePassword
+                            keyAlias = cnKeyStoreAlias
+                            keyPassword = cnKeyStorePassword
+                        }
                         enableV1Signing = true
                         enableV2Signing = true
                     }
