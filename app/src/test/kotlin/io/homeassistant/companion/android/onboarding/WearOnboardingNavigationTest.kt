@@ -1,5 +1,8 @@
 package io.homeassistant.companion.android.onboarding
 
+import android.Manifest
+import android.app.Application
+import android.content.Context
 import android.net.Uri
 import androidx.activity.compose.LocalActivityResultRegistryOwner
 import androidx.activity.result.ActivityResultRegistry
@@ -26,6 +29,7 @@ import androidx.navigation.compose.ComposeNavigator
 import androidx.navigation.compose.NavHost
 import androidx.navigation.testing.TestNavHostController
 import androidx.navigation.toRoute
+import androidx.test.core.app.ApplicationProvider
 import dagger.hilt.android.testing.BindValue
 import dagger.hilt.android.testing.HiltAndroidRule
 import dagger.hilt.android.testing.HiltAndroidTest
@@ -55,6 +59,7 @@ import io.homeassistant.companion.android.onboarding.wearmtls.navigation.WearMTL
 import io.homeassistant.companion.android.onboarding.wearmtls.navigation.navigateToWearMTLS
 import io.homeassistant.companion.android.testing.unit.MainDispatcherJUnit4Rule
 import io.homeassistant.companion.android.testing.unit.TestSharedFlow
+import io.homeassistant.companion.android.testing.unit.seedFakeAndroidId
 import io.homeassistant.companion.android.testing.unit.stringResource
 import io.homeassistant.companion.android.util.FakePermissionResultRegistry
 import io.homeassistant.companion.android.util.compose.navigateToUri
@@ -81,10 +86,15 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 
 private const val WEAR_NAME = "super_ha_wear"
 private const val VALID_PASSWORD = "1234"
+
+// Robolectric leaves Settings.Secure.ANDROID_ID null, but the integration graph injects it as a
+// non-null @NamedDeviceId, so we seed a value to avoid a null-from-@Provides crash during DI.
+private const val FAKE_ANDROID_ID = "robolectric-android-id"
 
 @RunWith(RobolectricTestRunner::class)
 @Config(application = HiltTestApplication::class)
@@ -152,8 +162,13 @@ internal class WearOnboardingNavigationTest {
 
     @Before
     fun setup() {
+        val app = ApplicationProvider.getApplicationContext<Context>()
+        app.seedFakeAndroidId()
         mockkStatic(NavController::navigateToUri)
         coEvery { any<NavController>().navigateToUri(any(), any()) } just Runs
+        // API 37+ gates the discovery screen on this permission; grant it so the screen renders.
+        shadowOf(ApplicationProvider.getApplicationContext<Application>())
+            .grantPermissions(Manifest.permission.ACCESS_LOCAL_NETWORK)
     }
 
     private fun setContent(urlToOnboard: String? = null) {

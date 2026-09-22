@@ -31,10 +31,10 @@ Looking for help? Check out the [Home Assistant Companion Documentation](https:/
 
 ## Report a bug or request a feature
 
-Found a bug or have an idea for a new feature? Let us know!  
+Found a bug or have an idea for a new feature? Let us know!
 
-- **[Open a Bug Report](https://github.com/home-assistant/android/issues/new?template=Bug_report.md)**  
-- **[Request a Feature](https://github.com/home-assistant/android/issues/new?template=feature_request.md)**  
+- **[Open a Bug Report](https://github.com/home-assistant/android/issues/new?template=Bug_report.md)**
+- **[Request a Feature](https://github.com/home-assistant/android/issues/new?template=feature_request.md)**
 
 We appreciate your feedback and contributions to make the app even better!
 
@@ -56,7 +56,7 @@ Connect with other contributors and users in our vibrant **[Discord Community](h
 
 ## Star the repository
 
-If you find this project useful, consider giving it a star on GitHub!  
+If you find this project useful, consider giving it a star on GitHub!
 It helps others discover the project and motivates us to keep improving.
 
 <a href="https://next.ossinsight.io/widgets/official/analyze-repo-stars-history?repo_id=179008173" target="_blank" style="display: block" align="center">

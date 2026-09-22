@@ -1,5 +1,6 @@
 package io.homeassistant.companion.android.onboarding
 
+import android.content.Context
 import android.content.pm.PackageManager
 import androidx.activity.compose.LocalActivityResultRegistryOwner
 import androidx.activity.result.ActivityResultRegistry
@@ -13,8 +14,10 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.ComposeNavigator
 import androidx.navigation.compose.NavHost
 import androidx.navigation.testing.TestNavHostController
+import androidx.test.core.app.ApplicationProvider
 import dagger.hilt.android.testing.HiltAndroidRule
 import io.homeassistant.companion.android.HiltComponentActivity
+import io.homeassistant.companion.android.testing.unit.seedFakeAndroidId
 import io.homeassistant.companion.android.util.FakePermissionResultRegistry
 import io.homeassistant.companion.android.util.compose.navigateToUri
 import io.mockk.Runs
@@ -22,7 +25,9 @@ import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.just
 import io.mockk.mockkStatic
+import io.mockk.unmockkAll
 import kotlinx.coroutines.test.runTest
+import org.junit.After
 import org.junit.Before
 import org.junit.Rule
 
@@ -46,8 +51,14 @@ internal abstract class BaseOnboardingNavigationTest {
 
     @Before
     fun baseSetup() {
+        ApplicationProvider.getApplicationContext<Context>().seedFakeAndroidId()
         mockkStatic(NavController::navigateToUri)
         coEvery { any<NavController>().navigateToUri(any(), any()) } just Runs
+    }
+
+    @After
+    fun baseTearDown() {
+        unmockkAll()
     }
 
     protected fun setContent(
@@ -94,6 +105,7 @@ internal abstract class BaseOnboardingNavigationTest {
         skipWelcome: Boolean = false,
         hasLocationTracking: Boolean = true,
         fromInvitation: Boolean = false,
+        permissionResultRegistry: ActivityResultRegistry = FakePermissionResultRegistry(grantAll = true),
         testContent: suspend AndroidComposeTestRule<*, *>.() -> Unit,
     ) {
         setContent(
@@ -102,6 +114,7 @@ internal abstract class BaseOnboardingNavigationTest {
             skipWelcome = skipWelcome,
             hasLocationTracking = hasLocationTracking,
             fromInvitation = fromInvitation,
+            permissionResultRegistry = permissionResultRegistry,
         )
         runTest {
             composeTestRule.testContent()

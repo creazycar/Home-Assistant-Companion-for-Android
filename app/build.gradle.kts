@@ -3,7 +3,6 @@ import com.google.gms.googleservices.GoogleServicesPlugin.GoogleServicesPluginCo
 plugins {
     alias(libs.plugins.homeassistant.android.application)
     alias(libs.plugins.homeassistant.android.flavor)
-    alias(libs.plugins.firebase.appdistribution)
     alias(libs.plugins.homeassistant.android.dependencies)
     alias(libs.plugins.kotlin.parcelize)
     alias(libs.plugins.screenshot)
@@ -63,6 +62,7 @@ dependencies {
     // Most of the dependencies are coming from the convention plugin to avoid duplication with `:automotive` module.
     "fullImplementation"(libs.car.projected)
     //"fullImplementation"(libs.amap)
+    ksp(project(":provides-sensor-processor"))
 
     screenshotTestImplementation(libs.compose.uiTooling)
 }

@@ -29,14 +29,18 @@ import androidx.preference.SwitchPreference
 import com.google.android.material.snackbar.Snackbar
 import io.homeassistant.companion.android.BuildConfig
 import io.homeassistant.companion.android.R
+import io.homeassistant.companion.android.WIPFeature
 import io.homeassistant.companion.android.authenticator.Authenticator.Companion.AuthenticationResult
+import io.homeassistant.companion.android.changelog.ChangelogFragment
 import io.homeassistant.companion.android.common.R as commonR
 import io.homeassistant.companion.android.common.util.SdkVersion
 import io.homeassistant.companion.android.common.util.isAutomotive
 import io.homeassistant.companion.android.common.util.isIgnoringBatteryOptimizations
 import io.homeassistant.companion.android.common.util.maybeAskForIgnoringBatteryOptimizations
 import io.homeassistant.companion.android.database.server.Server
+import io.homeassistant.companion.android.frontend.navigation.FrontendTarget
 import io.homeassistant.companion.android.launch.intentLaunchOnboarding
+import io.homeassistant.companion.android.launch.intentLaunchWithNavigateTo
 import io.homeassistant.companion.android.nfc.NfcSetupActivity
 import io.homeassistant.companion.android.settings.assist.AssistSettingsFragment
 import io.homeassistant.companion.android.settings.assist.DefaultAssistantManager
@@ -52,13 +56,13 @@ import io.homeassistant.companion.android.settings.sensor.SensorSettingsFragment
 import io.homeassistant.companion.android.settings.sensor.SensorUpdateFrequencyFragment
 import io.homeassistant.companion.android.settings.server.ServerSettingsFragment
 import io.homeassistant.companion.android.settings.shortcuts.ManageShortcutsSettingsFragment
+import io.homeassistant.companion.android.settings.shortcuts.legacy.ManageShortcutsSettingsFragment as LegacyManageShortcutsSettingsFragment
 import io.homeassistant.companion.android.settings.vehicle.ManageAndroidAutoSettingsFragment
 import io.homeassistant.companion.android.settings.wear.SettingsWearActivity
 import io.homeassistant.companion.android.settings.wear.SettingsWearDetection
 import io.homeassistant.companion.android.settings.widgets.ManageWidgetsSettingsFragment
 import io.homeassistant.companion.android.util.QuestUtil
 import io.homeassistant.companion.android.util.applyBottomSafeDrawingInsets
-import io.homeassistant.companion.android.webview.WebViewActivity
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -236,7 +240,11 @@ class SettingsFragment(
                 }
                 findPreference<Preference>("manage_shortcuts")?.setOnPreferenceClickListener {
                     parentFragmentManager.commit {
-                        replace(R.id.content, ManageShortcutsSettingsFragment::class.java, null)
+                        if (WIPFeature.USE_SHORTCUTS_V2) {
+                            replace(R.id.content, ManageShortcutsSettingsFragment::class.java, null)
+                        } else {
+                            replace(R.id.content, LegacyManageShortcutsSettingsFragment::class.java, null)
+                        }
                         addToBackStack(getString(commonR.string.shortcuts))
                     }
                     return@setOnPreferenceClickListener true
@@ -354,22 +362,10 @@ class SettingsFragment(
             }
         }
 
-        findPreference<Preference>("changelog_github")?.let {
-            val link = if (BuildConfig.VERSION_NAME.startsWith("LOCAL")) {
-                "https://github.com/home-assistant/android/releases"
-            } else {
-                "https://github.com/home-assistant/android/releases/tag/${BuildConfig.VERSION_NAME.replace(
-                    "-full",
-                    "",
-                ).replace("-minimal", "")}"
-            }
-            it.summary = link
-            it.intent = Intent(Intent.ACTION_VIEW, link.toUri())
-        }
-
         findPreference<Preference>("changelog_prompt")?.setOnPreferenceClickListener {
-            lifecycleScope.launch {
-                presenter.showChangeLog(requireContext())
+            parentFragmentManager.commit {
+                replace(R.id.content, ChangelogFragment::class.java, null)
+                addToBackStack(getString(commonR.string.changelog_screen_title))
             }
             true
         }
@@ -636,9 +632,10 @@ class SettingsFragment(
             ).apply {
                 if (success && serverId != null) {
                     setAction(commonR.string.activate) {
-                        val intent = WebViewActivity.newInstance(requireContext(), null, serverId).apply {
-                            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                        }
+                        val intent = requireContext().intentLaunchWithNavigateTo(
+                            FrontendTarget.Default,
+                            serverId,
+                        ).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
                         requireContext().startActivity(intent)
                     }
                 }

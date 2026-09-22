@@ -13,6 +13,9 @@ enum class SensorSettingType(val string: String, val listType: Boolean = false) 
     LIST_BLUETOOTH("list-bluetooth", listType = true),
     LIST_ZONES("list-zones", listType = true),
     LIST_BEACONS("list-beacons", listType = true),
+    ;
+
+    fun isMultiSelect(): Boolean = listType && this != LIST
 }
 
 @Entity(tableName = "sensor_settings", primaryKeys = ["sensor_id", "name"])
@@ -22,7 +25,7 @@ data class SensorSetting(
     @ColumnInfo(name = "name")
     val name: String,
     @ColumnInfo(name = "value")
-    var value: String,
+    val value: String,
     /** Indicates the data type of the `value`. */
     @ColumnInfo(name = "value_type")
     val valueType: SensorSettingType,
@@ -35,7 +38,7 @@ data class SensorSetting(
 class EntriesTypeConverter {
     @TypeConverter
     fun fromStringToList(value: String): List<String> {
-        return value.split("|").map { it }
+        return value.split("|")
     }
 
     @TypeConverter

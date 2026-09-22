@@ -14,6 +14,7 @@ import io.homeassistant.companion.android.frontend.barcode.BarcodeScannerUiState
 import io.homeassistant.companion.android.frontend.dialog.FrontendDialog
 import io.homeassistant.companion.android.frontend.error.FrontendConnectionError
 import io.homeassistant.companion.android.frontend.js.FrontendJsBridge
+import io.homeassistant.companion.android.frontend.matterthread.MatterThreadTerminal
 import io.homeassistant.companion.android.frontend.permissions.PermissionRequest
 import io.homeassistant.companion.android.util.compose.HAPreviews
 
@@ -26,7 +27,7 @@ class FrontendScreenScreenshotTest {
         HAThemeForPreview {
             FrontendScreenContent(
                 viewState = FrontendViewState.LoadServer(serverId = 1),
-                webViewClient = WebViewClient(),
+                getWebViewClient = { WebViewClient() },
                 webChromeClient = WebChromeClient(),
                 frontendJsCallback = FrontendJsBridge.noOp,
                 onBlockInsecureRetry = {},
@@ -53,7 +54,7 @@ class FrontendScreenScreenshotTest {
                     serverId = 1,
                     url = "https://example.com",
                 ),
-                webViewClient = WebViewClient(),
+                getWebViewClient = { WebViewClient() },
                 webChromeClient = WebChromeClient(),
                 frontendJsCallback = FrontendJsBridge.noOp,
                 onBlockInsecureRetry = {},
@@ -77,7 +78,7 @@ class FrontendScreenScreenshotTest {
         HAThemeForPreview {
             FrontendScreenContent(
                 viewState = FrontendViewState.SecurityLevelRequired(serverId = 1),
-                webViewClient = WebViewClient(),
+                getWebViewClient = { WebViewClient() },
                 webChromeClient = WebChromeClient(),
                 frontendJsCallback = FrontendJsBridge.noOp,
                 onBlockInsecureRetry = {},
@@ -105,7 +106,7 @@ class FrontendScreenScreenshotTest {
                     missingHomeSetup = true,
                     missingLocation = false,
                 ),
-                webViewClient = WebViewClient(),
+                getWebViewClient = { WebViewClient() },
                 webChromeClient = WebChromeClient(),
                 frontendJsCallback = FrontendJsBridge.noOp,
                 onBlockInsecureRetry = {},
@@ -132,7 +133,7 @@ class FrontendScreenScreenshotTest {
                     serverId = 1,
                     url = "https://example.com",
                 ),
-                webViewClient = WebViewClient(),
+                getWebViewClient = { WebViewClient() },
                 webChromeClient = WebChromeClient(),
                 frontendJsCallback = FrontendJsBridge.noOp,
                 onBlockInsecureRetry = {},
@@ -160,7 +161,7 @@ class FrontendScreenScreenshotTest {
                     serverId = 1,
                     url = "https://example.com",
                 ),
-                webViewClient = WebViewClient(),
+                getWebViewClient = { WebViewClient() },
                 webChromeClient = WebChromeClient(),
                 frontendJsCallback = FrontendJsBridge.noOp,
                 onBlockInsecureRetry = {},
@@ -193,7 +194,7 @@ class FrontendScreenScreenshotTest {
                     onConfirm = {},
                     onCancel = {},
                 ),
-                webViewClient = WebViewClient(),
+                getWebViewClient = { WebViewClient() },
                 webChromeClient = WebChromeClient(),
                 frontendJsCallback = FrontendJsBridge.noOp,
                 onBlockInsecureRetry = {},
@@ -219,13 +220,13 @@ class FrontendScreenScreenshotTest {
                 viewState = FrontendViewState.Error(
                     serverId = 1,
                     url = "https://example.com",
-                    error = FrontendConnectionError.UnreachableError(
+                    error = FrontendConnectionError.Unreachable(
                         message = commonR.string.webview_error_HOST_LOOKUP,
                         errorDetails = "Connection timed out",
                         rawErrorType = "HostLookupError",
                     ),
                 ),
-                webViewClient = WebViewClient(),
+                getWebViewClient = { WebViewClient() },
                 webChromeClient = WebChromeClient(),
                 frontendJsCallback = FrontendJsBridge.noOp,
                 onBlockInsecureRetry = {},
@@ -259,7 +260,7 @@ class FrontendScreenScreenshotTest {
                     onProceed = { _, _, _ -> },
                     onCancel = {},
                 ),
-                webViewClient = WebViewClient(),
+                getWebViewClient = { WebViewClient() },
                 webChromeClient = WebChromeClient(),
                 frontendJsCallback = FrontendJsBridge.noOp,
                 onBlockInsecureRetry = {},
@@ -293,7 +294,97 @@ class FrontendScreenScreenshotTest {
                     onProceed = { _, _, _ -> },
                     onCancel = {},
                 ),
-                webViewClient = WebViewClient(),
+                getWebViewClient = { WebViewClient() },
+                webChromeClient = WebChromeClient(),
+                frontendJsCallback = FrontendJsBridge.noOp,
+                onBlockInsecureRetry = {},
+                onOpenExternalLink = {},
+                onBlockInsecureHelpClick = {},
+                onOpenSettings = {},
+                onChangeSecurityLevel = {},
+                onOpenLocationSettings = {},
+                onConfigureHomeNetwork = { _ -> },
+                onSecurityLevelHelpClick = {},
+                onShowSnackbar = { _, _ -> true },
+                onWebViewCreationFailed = {},
+            )
+        }
+    }
+
+    @PreviewTest
+    @HAPreviews
+    @Composable
+    fun `FrontendScreen Content with Matter Thread progress dialog`() {
+        HAThemeForPreview {
+            FrontendScreenContent(
+                viewState = FrontendViewState.Content(
+                    serverId = 1,
+                    url = "https://example.com",
+                ),
+                pendingDialog = FrontendDialog.MatterThreadProgressDialog,
+                getWebViewClient = { WebViewClient() },
+                webChromeClient = WebChromeClient(),
+                frontendJsCallback = FrontendJsBridge.noOp,
+                onBlockInsecureRetry = {},
+                onOpenExternalLink = {},
+                onBlockInsecureHelpClick = {},
+                onOpenSettings = {},
+                onChangeSecurityLevel = {},
+                onOpenLocationSettings = {},
+                onConfigureHomeNetwork = { _ -> },
+                onSecurityLevelHelpClick = {},
+                onShowSnackbar = { _, _ -> true },
+                onWebViewCreationFailed = {},
+            )
+        }
+    }
+
+    @PreviewTest
+    @HAPreviews
+    @Composable
+    fun `FrontendScreen Content with Matter Thread no dataset dialog`() {
+        HAThemeForPreview {
+            FrontendScreenContent(
+                viewState = FrontendViewState.Content(
+                    serverId = 1,
+                    url = "https://example.com",
+                ),
+                pendingDialog = FrontendDialog.MatterThreadTerminalDialog(
+                    terminal = MatterThreadTerminal.Dialog.ThreadNoDataset,
+                    onDismiss = {},
+                ),
+                getWebViewClient = { WebViewClient() },
+                webChromeClient = WebChromeClient(),
+                frontendJsCallback = FrontendJsBridge.noOp,
+                onBlockInsecureRetry = {},
+                onOpenExternalLink = {},
+                onBlockInsecureHelpClick = {},
+                onOpenSettings = {},
+                onChangeSecurityLevel = {},
+                onOpenLocationSettings = {},
+                onConfigureHomeNetwork = { _ -> },
+                onSecurityLevelHelpClick = {},
+                onShowSnackbar = { _, _ -> true },
+                onWebViewCreationFailed = {},
+            )
+        }
+    }
+
+    @PreviewTest
+    @HAPreviews
+    @Composable
+    fun `FrontendScreen Content with Matter Thread not connected dialog`() {
+        HAThemeForPreview {
+            FrontendScreenContent(
+                viewState = FrontendViewState.Content(
+                    serverId = 1,
+                    url = "https://example.com",
+                ),
+                pendingDialog = FrontendDialog.MatterThreadTerminalDialog(
+                    terminal = MatterThreadTerminal.Dialog.ThreadNotConnected,
+                    onDismiss = {},
+                ),
+                getWebViewClient = { WebViewClient() },
                 webChromeClient = WebChromeClient(),
                 frontendJsCallback = FrontendJsBridge.noOp,
                 onBlockInsecureRetry = {},
@@ -323,7 +414,7 @@ class FrontendScreenScreenshotTest {
                     url = "https://example.com",
                 ),
                 customView = view,
-                webViewClient = WebViewClient(),
+                getWebViewClient = { WebViewClient() },
                 webChromeClient = WebChromeClient(),
                 frontendJsCallback = FrontendJsBridge.noOp,
                 onBlockInsecureRetry = {},
@@ -356,7 +447,7 @@ class FrontendScreenScreenshotTest {
                         alternativeOptionLabel = "Enter manually",
                     ),
                 ),
-                webViewClient = WebViewClient(),
+                getWebViewClient = { WebViewClient() },
                 webChromeClient = WebChromeClient(),
                 frontendJsCallback = FrontendJsBridge.noOp,
                 onBlockInsecureRetry = {},
@@ -393,7 +484,7 @@ class FrontendScreenScreenshotTest {
                     message = "This code is already paired",
                     onDismiss = {},
                 ),
-                webViewClient = WebViewClient(),
+                getWebViewClient = { WebViewClient() },
                 webChromeClient = WebChromeClient(),
                 frontendJsCallback = FrontendJsBridge.noOp,
                 onBlockInsecureRetry = {},

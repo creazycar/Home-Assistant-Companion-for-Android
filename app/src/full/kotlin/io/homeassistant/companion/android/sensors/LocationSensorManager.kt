@@ -3,7 +3,6 @@ package io.homeassistant.companion.android.sensors
 import android.Manifest
 import android.app.PendingIntent
 import android.bluetooth.BluetoothAdapter
-import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Context.LOCATION_SERVICE
 import android.content.Context.WIFI_SERVICE
@@ -39,17 +38,19 @@ import io.homeassistant.companion.android.common.bluetooth.BluetoothUtils
 import io.homeassistant.companion.android.common.data.integration.Entity
 import io.homeassistant.companion.android.common.data.integration.UpdateLocation
 import io.homeassistant.companion.android.common.data.prefs.PrefsRepository
+import io.homeassistant.companion.android.common.data.servers.ServerManager
 import io.homeassistant.companion.android.common.notifications.DeviceCommandData
+import io.homeassistant.companion.android.common.sensors.ProvidesSensor
 import io.homeassistant.companion.android.common.sensors.SensorManager
+import io.homeassistant.companion.android.common.sensors.SensorManager.BasicSensor.Setting
 import io.homeassistant.companion.android.common.sensors.SensorReceiverBase
+import io.homeassistant.companion.android.common.sensors.SensorRepository
 import io.homeassistant.companion.android.common.util.DisabledLocationHandler
 
 import io.homeassistant.companion.android.database.location.LocationHistoryItem
 import io.homeassistant.companion.android.database.location.LocationHistoryItemResult
 import io.homeassistant.companion.android.database.location.LocationHistoryItemTrigger
 import io.homeassistant.companion.android.database.sensor.Attribute
-import io.homeassistant.companion.android.database.sensor.SensorSetting
-import io.homeassistant.companion.android.database.sensor.SensorSettingType
 import io.homeassistant.companion.android.database.sensor.toSensorWithAttributes
 import io.homeassistant.companion.android.location.HighAccuracyLocationService
 import io.homeassistant.companion.android.notifications.MessagingManager
@@ -87,9 +88,11 @@ class LocationSensorManager :  BroadcastReceiver(), SensorManager {
         private const val SEND_LOCATION_AS_ZONE_ONLY = "zone_only"
         private const val DEFAULT_MINIMUM_ACCURACY = 200
         private const val DEFAULT_UPDATE_INTERVAL_HA_SECONDS = 5
+        private const val MINIMUM_UPDATE_INTERVAL_HA_SECONDS = 5
         private const val DEFAULT_TRIGGER_RANGE_METERS = 300
 
         private const val DEFAULT_LOCATION_INTERVAL: Long = 60000
+        private const val DEFAULT_ACCURATE_UPDATE_TIME_MILLIS = 60000
         private const val DEFAULT_LOCATION_FAST_INTERVAL: Long = 30000
         private const val DEFAULT_LOCATION_MAX_WAIT_TIME: Long = 200000
 
@@ -108,6 +111,7 @@ class LocationSensorManager :  BroadcastReceiver(), SensorManager {
         const val ACTION_FORCE_HIGH_ACCURACY =
             "io.homeassistant.companion.android.background.FORCE_HIGH_ACCURACY"
 
+        @ProvidesSensor
         val backgroundLocation = SensorManager.BasicSensor(
             "location_background",
             "",
@@ -115,7 +119,23 @@ class LocationSensorManager :  BroadcastReceiver(), SensorManager {
             commonR.string.sensor_description_location_background,
             "mdi:map-marker-multiple",
             updateType = SensorManager.BasicSensor.UpdateType.LOCATION,
+            settings = listOf(
+                Setting.Options(
+                    SETTING_SEND_LOCATION_AS,
+                    SEND_LOCATION_AS_EXACT,
+                    entries = listOf(SEND_LOCATION_AS_EXACT, SEND_LOCATION_AS_ZONE_ONLY),
+                ),
+                Setting.Number(SETTING_ACCURACY, DEFAULT_MINIMUM_ACCURACY),
+                Setting.Toggle(SETTING_HIGH_ACCURACY_MODE, default = false),
+                Setting.Number(SETTING_HIGH_ACCURACY_MODE_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL_HA_SECONDS),
+                Setting.BluetoothDevices(SETTING_HIGH_ACCURACY_MODE_BLUETOOTH_DEVICES),
+                Setting.Zones(SETTING_HIGH_ACCURACY_MODE_ZONE),
+                Setting.Toggle(SETTING_HIGH_ACCURACY_BT_ZONE_COMBINED, default = false),
+                Setting.Number(SETTING_HIGH_ACCURACY_MODE_TRIGGER_RANGE_ZONE, DEFAULT_TRIGGER_RANGE_METERS),
+            ),
         )
+
+        @ProvidesSensor
         val zoneLocation = SensorManager.BasicSensor(
             "zone_background",
             "",
@@ -123,7 +143,12 @@ class LocationSensorManager :  BroadcastReceiver(), SensorManager {
             commonR.string.sensor_description_location_zone,
             "mdi:map-marker-radius",
             updateType = SensorManager.BasicSensor.UpdateType.LOCATION,
+            settings = listOf(
+                Setting.Number(SETTING_ACCURACY, DEFAULT_MINIMUM_ACCURACY),
+            ),
         )
+
+        @ProvidesSensor
         val singleAccurateLocation = SensorManager.BasicSensor(
             "accurate_location",
             "",
@@ -131,8 +156,14 @@ class LocationSensorManager :  BroadcastReceiver(), SensorManager {
             commonR.string.sensor_description_location_accurate,
             "mdi:crosshairs-gps",
             updateType = SensorManager.BasicSensor.UpdateType.LOCATION,
+            settings = listOf(
+                Setting.Number(SETTING_ACCURACY, DEFAULT_MINIMUM_ACCURACY),
+                Setting.Number(SETTING_ACCURATE_UPDATE_TIME, DEFAULT_ACCURATE_UPDATE_TIME_MILLIS),
+                Setting.Toggle(SETTING_INCLUDE_SENSOR_UPDATE, default = false),
+            ),
         )
 
+        @ProvidesSensor
         val highAccuracyMode = SensorManager.BasicSensor(
             "high_accuracy_mode",
             "binary_sensor",
@@ -143,6 +174,7 @@ class LocationSensorManager :  BroadcastReceiver(), SensorManager {
             updateType = SensorManager.BasicSensor.UpdateType.INTENT,
         )
 
+        @ProvidesSensor
         val highAccuracyUpdateInterval = SensorManager.BasicSensor(
             "high_accuracy_update_interval",
             "sensor",
@@ -239,6 +271,24 @@ class LocationSensorManager :  BroadcastReceiver(), SensorManager {
                 )
             }
         }
+
+        // Upstream-style extensions (2026.9 architecture): callers import these from the
+        // Companion and invoke them on SensorRepository.
+        suspend fun SensorRepository.setHighAccuracyModeSetting(enabled: Boolean) {
+            updateSettingValue(
+                backgroundLocation.id,
+                SETTING_HIGH_ACCURACY_MODE,
+                enabled.toString(),
+            )
+        }
+
+        suspend fun SensorRepository.setHighAccuracyModeIntervalSetting(updateInterval: Int) {
+            updateSettingValue(
+                backgroundLocation.id,
+                SETTING_HIGH_ACCURACY_MODE_UPDATE_INTERVAL,
+                updateInterval.toString(),
+            )
+        }
     }
 
     private val ioScope: CoroutineScope = CoroutineScope(Dispatchers.IO)
@@ -272,7 +322,7 @@ class LocationSensorManager :  BroadcastReceiver(), SensorManager {
                             }
                             forceHighAccuracyModeOn = turnOn
                             forceHighAccuracyModeOff = false
-                            setHighAccuracyModeSetting(latestContext, turnOn)
+                            sensorRepository.setHighAccuracyModeSetting(turnOn)
                             setupBackgroundLocation()
                         }
 
@@ -285,7 +335,7 @@ class LocationSensorManager :  BroadcastReceiver(), SensorManager {
 
                         MessagingManager.HIGH_ACCURACY_SET_UPDATE_INTERVAL -> {
                             if (lastHighAccuracyMode) {
-                                restartHighAccuracyService(getHighAccuracyModeIntervalSetting(latestContext))
+                                restartHighAccuracyService(getHighAccuracyModeIntervalSetting())
                             }
                         }
                     }
@@ -296,8 +346,16 @@ class LocationSensorManager :  BroadcastReceiver(), SensorManager {
         }
     }
 
+    private suspend fun getHighAccuracyModeIntervalSetting(): Int {
+        val sensorSettings = sensorRepository.getSettings(backgroundLocation.id)
+        return sensorSettings.firstOrNull {
+            it.name == SETTING_HIGH_ACCURACY_MODE_UPDATE_INTERVAL
+        }?.value?.toIntOrNull()
+            ?: DEFAULT_UPDATE_INTERVAL_HA_SECONDS
+    }
+
     private suspend fun setupLocationTracking() {
-        if (!checkPermission(latestContext, backgroundLocation.id)) {
+        if (!checkPermission(backgroundLocation.id)) {
             Timber.w("Not starting location reporting because of permissions.")
             return
         }
@@ -357,8 +415,8 @@ class LocationSensorManager :  BroadcastReceiver(), SensorManager {
     private suspend fun setupBackgroundLocation(backgroundEnabled: Boolean? = null, zoneEnabled: Boolean? = null) {
         var isBackgroundEnabled = backgroundEnabled
         var isZoneEnable = zoneEnabled
-        if (isBackgroundEnabled == null) isBackgroundEnabled = isEnabled(latestContext, backgroundLocation)
-        if (isZoneEnable == null) isZoneEnable = isEnabled(latestContext, zoneLocation)
+        if (isBackgroundEnabled == null) isBackgroundEnabled = isEnabled(backgroundLocation)
+        if (isZoneEnable == null) isZoneEnable = isEnabled(zoneLocation)
 
         if (isBackgroundEnabled) {
             val updateIntervalHighAccuracySeconds = getHighAccuracyModeUpdateInterval()
@@ -413,7 +471,7 @@ class LocationSensorManager :  BroadcastReceiver(), SensorManager {
             lastHighAccuracyMode = highAccuracyModeEnabled
             lastHighAccuracyUpdateInterval = updateIntervalHighAccuracySeconds
 
-            serverManager(latestContext).servers().forEach {
+            serverManager.servers().forEach {
                 getSendLocationAsSetting(it.id) // Sets up the setting, value isn't used right now
             }
         }
@@ -421,45 +479,41 @@ class LocationSensorManager :  BroadcastReceiver(), SensorManager {
 
     private suspend fun restartHighAccuracyService(intervalInSeconds: Int) {
         onSensorUpdated(
-            latestContext,
             highAccuracyUpdateInterval,
             intervalInSeconds,
             highAccuracyUpdateInterval.statelessIcon,
             mapOf(),
         )
-        SensorReceiver.updateAllSensors(latestContext)
-        HighAccuracyLocationService.restartService(latestContext, intervalInSeconds)
+        SensorReceiver.updateAllSensors(applicationContext)
+        HighAccuracyLocationService.restartService(applicationContext, intervalInSeconds)
     }
 
     private suspend fun startHighAccuracyService(intervalInSeconds: Int) {
         onSensorUpdated(
-            latestContext,
             highAccuracyMode,
             true,
             highAccuracyMode.statelessIcon,
             mapOf(),
         )
         onSensorUpdated(
-            latestContext,
             highAccuracyUpdateInterval,
             intervalInSeconds,
             highAccuracyUpdateInterval.statelessIcon,
             mapOf(),
         )
-        SensorReceiver.updateAllSensors(latestContext)
-        HighAccuracyLocationService.startService(latestContext, intervalInSeconds)
+        SensorReceiver.updateAllSensors(applicationContext)
+        HighAccuracyLocationService.startService(applicationContext, intervalInSeconds)
     }
 
     private suspend fun stopHighAccuracyService() {
         onSensorUpdated(
-            latestContext,
             highAccuracyMode,
             false,
             highAccuracyMode.statelessIcon,
             mapOf(),
         )
-        SensorReceiver.updateAllSensors(latestContext)
-        HighAccuracyLocationService.stopService(latestContext)
+        SensorReceiver.updateAllSensors(applicationContext)
+        HighAccuracyLocationService.stopService(applicationContext)
     }
 
     private suspend fun getHighAccuracyModeUpdateInterval(): Int {
@@ -475,7 +529,7 @@ class LocationSensorManager :  BroadcastReceiver(), SensorManager {
         if (updateIntervalHighAccuracySecondsInt < 5) {
             updateIntervalHighAccuracySecondsInt = DEFAULT_UPDATE_INTERVAL_HA_SECONDS
 
-            setHighAccuracyModeIntervalSetting(latestContext, updateIntervalHighAccuracySecondsInt)
+            sensorRepository.setHighAccuracyModeIntervalSetting(updateIntervalHighAccuracySecondsInt)
         }
         return updateIntervalHighAccuracySecondsInt
     }
@@ -511,13 +565,8 @@ class LocationSensorManager :  BroadcastReceiver(), SensorManager {
     }
 
     private suspend fun shouldEnableHighAccuracyMode(): Boolean {
-        val highAccuracyModeBTDevicesSetting = getSetting(
-            latestContext,
-            backgroundLocation,
-            SETTING_HIGH_ACCURACY_MODE_BLUETOOTH_DEVICES,
-            SensorSettingType.LIST_BLUETOOTH,
-            "",
-        )
+        val highAccuracyModeBTDevicesSetting =
+            getSetting(backgroundLocation, SETTING_HIGH_ACCURACY_MODE_BLUETOOTH_DEVICES)
         val highAccuracyModeBTDevices = highAccuracyModeBTDevicesSetting
             .split(", ")
             .mapNotNull { it.trim().ifBlank { null } }
@@ -539,7 +588,7 @@ class LocationSensorManager :  BroadcastReceiver(), SensorManager {
         if (highAccuracyModeBTDevices.isNotEmpty()) {
             constraintsUsed = true
 
-            val bluetoothDevices = BluetoothUtils.getBluetoothDevices(latestContext)
+            val bluetoothDevices = BluetoothUtils.getBluetoothDevices(applicationContext)
 
             // If any of the stored devices aren't a Bluetooth device address, try to match them to a device
             var updatedBtDeviceNames = false
@@ -556,13 +605,10 @@ class LocationSensorManager :  BroadcastReceiver(), SensorManager {
                 }
             }
             if (updatedBtDeviceNames) {
-                sensorDao(latestContext).add(
-                    SensorSetting(
-                        backgroundLocation.id,
-                        SETTING_HIGH_ACCURACY_MODE_BLUETOOTH_DEVICES,
-                        highAccuracyModeBTDevices.joinToString().replace("[", "").replace("]", ""),
-                        SensorSettingType.LIST_BLUETOOTH,
-                    ),
+                sensorRepository.updateSettingValue(
+                    backgroundLocation.id,
+                    SETTING_HIGH_ACCURACY_MODE_BLUETOOTH_DEVICES,
+                    highAccuracyModeBTDevices.joinToString().replace("[", "").replace("]", ""),
                 )
             }
 
@@ -614,38 +660,16 @@ class LocationSensorManager :  BroadcastReceiver(), SensorManager {
     }
 
     private suspend fun getHighAccuracyModeSetting(): Boolean {
-        return getSetting(
-            latestContext,
-            backgroundLocation,
-            SETTING_HIGH_ACCURACY_MODE,
-            SensorSettingType.TOGGLE,
-            "false",
-        ).toBoolean()
+        return getToggleSetting(backgroundLocation, SETTING_HIGH_ACCURACY_MODE)
     }
 
     private suspend fun getHighAccuracyBTZoneCombinedSetting(): Boolean {
-        return getSetting(
-            latestContext,
-            backgroundLocation,
-            SETTING_HIGH_ACCURACY_BT_ZONE_COMBINED,
-            SensorSettingType.TOGGLE,
-            "false",
-        ).toBoolean()
+        return getToggleSetting(backgroundLocation, SETTING_HIGH_ACCURACY_BT_ZONE_COMBINED)
     }
 
     private suspend fun getSendLocationAsSetting(serverId: Int): String {
-        return if (serverManager(latestContext).getServer(serverId)?.version?.isAtLeast(2022, 2, 0) == true) {
-            getSetting(
-                context = latestContext,
-                sensor = backgroundLocation,
-                settingName = SETTING_SEND_LOCATION_AS,
-                settingType = SensorSettingType.LIST,
-                entries = listOf(
-                    SEND_LOCATION_AS_EXACT,
-                    SEND_LOCATION_AS_ZONE_ONLY,
-                ),
-                default = SEND_LOCATION_AS_EXACT,
-            )
+        return if (serverManager.getServer(serverId)?.version?.isAtLeast(2022, 2, 0) == true) {
+            getSetting(backgroundLocation, SETTING_SEND_LOCATION_AS)
         } else {
             SEND_LOCATION_AS_EXACT
         }
@@ -661,7 +685,7 @@ class LocationSensorManager :  BroadcastReceiver(), SensorManager {
     }
 
     private suspend fun requestLocationUpdates() {
-        if (!checkPermission(latestContext, backgroundLocation.id)) {
+        if (!checkPermission(backgroundLocation.id)) {
             Timber.w("Not registering for location updates because of permissions.")
             return
         }
@@ -861,7 +885,7 @@ class LocationSensorManager :  BroadcastReceiver(), SensorManager {
 
     private suspend fun handleLocationUpdate(intent: Intent) {
         Timber.d("Received location update.")
-        val serverIds = getEnabledServers(latestContext, backgroundLocation)
+        val serverIds = getEnabledServers(backgroundLocation)
         serverIds.forEach {
             lastLocationReceived[it] = System.currentTimeMillis()
         }
@@ -967,13 +991,10 @@ class LocationSensorManager :  BroadcastReceiver(), SensorManager {
         getGeocodedLocation(location)
         checkGps(wifi)
 
-        val geocodeIncludeLocation = getSetting(
-            latestContext,
+        val geocodeIncludeLocation = getToggleSetting(
             GeocodeSensorManager.geocodedLocation,
             GeocodeSensorManager.SETTINGS_INCLUDE_LOCATION,
-            SensorSettingType.TOGGLE,
-            "false",
-        ).toBoolean()
+        )
 
         ioScope.launch {
             try {
@@ -985,13 +1006,13 @@ class LocationSensorManager :  BroadcastReceiver(), SensorManager {
 
                 // Update Geocoded Location Sensor
                 if (geocodeIncludeLocation) {
-                    val intent = Intent(latestContext, SensorReceiver::class.java)
+                    val intent = Intent(applicationContext, SensorReceiver::class.java)
                     intent.action = SensorReceiverBase.ACTION_UPDATE_SENSOR
                     intent.putExtra(
                         SensorReceiverBase.EXTRA_SENSOR_ID,
                         GeocodeSensorManager.geocodedLocation.id,
                     )
-                    latestContext.sendBroadcast(intent)
+                    applicationContext.sendBroadcast(intent)
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Could not update location for $serverId.")
@@ -1001,10 +1022,10 @@ class LocationSensorManager :  BroadcastReceiver(), SensorManager {
     }
 
     private fun getLocationUpdateIntent(isGeofence: Boolean): PendingIntent {
-        val intent = Intent(latestContext, LocationSensorManager::class.java)
+        val intent = Intent(applicationContext, LocationSensorManager::class.java)
         intent.action = if (isGeofence) ACTION_PROCESS_GEO else ACTION_PROCESS_LOCATION
         return PendingIntent.getBroadcast(
-            latestContext,
+            applicationContext,
             0,
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE,
@@ -1013,7 +1034,7 @@ class LocationSensorManager :  BroadcastReceiver(), SensorManager {
 
 
     private suspend fun getHighAccuracyModeTriggerRange(): Int {
-        val enabled = isEnabled(latestContext, zoneLocation)
+        val enabled = isEnabled(zoneLocation)
 
         if (!enabled) return 0
 
@@ -1045,17 +1066,11 @@ class LocationSensorManager :  BroadcastReceiver(), SensorManager {
     }
 
     private suspend fun getHighAccuracyModeZones(expandedZones: Boolean): List<String> {
-        val enabled = isEnabled(latestContext, zoneLocation)
+        val enabled = isEnabled(zoneLocation)
 
         if (!enabled) return emptyList()
 
-        val highAccuracyZones = getSetting(
-            latestContext,
-            backgroundLocation,
-            SETTING_HIGH_ACCURACY_MODE_ZONE,
-            SensorSettingType.LIST_ZONES,
-            "",
-        )
+        val highAccuracyZones = getSetting(backgroundLocation, SETTING_HIGH_ACCURACY_MODE_ZONE)
 
         return if (highAccuracyZones.isNotEmpty()) {
             val expanded = if (expandedZones) "_expanded" else ""
@@ -1066,11 +1081,11 @@ class LocationSensorManager :  BroadcastReceiver(), SensorManager {
     }
 
     private suspend fun requestSingleAccurateLocation() {
-        if (!checkPermission(latestContext, singleAccurateLocation.id)) {
+        if (!checkPermission(singleAccurateLocation.id)) {
             Timber.w("Not getting single accurate location because of permissions.")
             return
         }
-        if (!isEnabled(latestContext, singleAccurateLocation)) {
+        if (!isEnabled(singleAccurateLocation)) {
             Timber.w("Requested single accurate location but it is not enabled.")
             return
         }
@@ -1112,7 +1127,7 @@ class LocationSensorManager :  BroadcastReceiver(), SensorManager {
     override val name: Int
         get() = commonR.string.sensor_name_location
 
-    override fun requiredPermissions(context: Context, sensorId: String): Array<String> {
+    override fun requiredPermissions(sensorId: String): Array<String> {
         return when {
             (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) -> {
                 arrayOf(
