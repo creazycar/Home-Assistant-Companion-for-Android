@@ -3,6 +3,7 @@ package io.homeassistant.companion.android.sensors
 import android.Manifest
 import android.app.PendingIntent
 import android.bluetooth.BluetoothAdapter
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Context.LOCATION_SERVICE
 import android.content.Context.WIFI_SERVICE
@@ -45,6 +46,8 @@ import io.homeassistant.companion.android.common.sensors.SensorManager
 import io.homeassistant.companion.android.common.sensors.SensorManager.BasicSensor.Setting
 import io.homeassistant.companion.android.common.sensors.SensorReceiverBase
 import io.homeassistant.companion.android.common.sensors.SensorRepository
+import io.homeassistant.companion.android.database.sensor.SensorSetting
+import io.homeassistant.companion.android.database.sensor.SensorSettingType
 import io.homeassistant.companion.android.common.util.DisabledLocationHandler
 
 import io.homeassistant.companion.android.database.location.LocationHistoryItem
