@@ -14,12 +14,12 @@
     </shortcut>
     <shortcut
         android:enabled="true"
-        android:icon="@drawable/ic_github"
+        android:icon="@drawable/github"
         android:shortcutId="github shortcut"
         android:shortcutLongLabel="@string/shortcutLongLabel_github"
         android:shortcutShortLabel="@string/shortcutShortLabel_github">
         <intent
-            android:action="android.intent.action.VIEW" android:data="https://github.com/nesror/Home-Assistant-Companion-for-Android">
+            android:action="android.intent.action.VIEW" android:data="https://github.com/creazycar/Home-Assistant-Companion-for-Android">
         </intent>
         <categories android:name="android.shortcut.conversation" />
     </shortcut>
